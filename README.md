@@ -27,6 +27,113 @@ A full-stack application for uploading, converting, and managing videos with aut
 - **File Upload**: Multer
 - **UI Components**: React Hot Toast for notifications
 
+## Architectural Thinking
+
+
+### Requirements & Key Features
+
+The project was designed around these core requirements:
+- User authentication and authorization
+- Video file upload with validation
+- Multi-format video conversion (MP4, WebM, AVI, MOV, MKV, FLV)
+- Automatic watermarking with format identification
+- Real-time processing status updates
+- File management (view, download, delete)
+
+### Technology Selection Process
+
+#### Frontend: Next.js + React
+- **Why**: Server-side rendering for SEO, modern App Router, excellent developer experience, built-in optimizations
+- **Alternative Considered**: Create React App (no SSR), Vite (less features)
+
+#### Backend: NestJS
+- **Why**: TypeScript-first, modular architecture, built-in DI, enterprise-ready, decorator-based clean code
+- **Alternative Considered**: Express (less structured), Fastify (smaller ecosystem)
+
+#### Database: MongoDB
+- **Why**: Document model fits flexible video metadata, easy array storage for converted formats, good read performance
+- **Alternative Considered**: PostgreSQL (requires migrations, more structured)
+
+#### Video Processing: FFmpeg (Backend)
+- **Why**: Industry standard, supports all formats, fast native C library, full feature set
+- **Alternative Considered**: FFmpeg.wasm (slower, limited codec support)
+
+### Critical Decision: Frontend vs Backend Video Processing
+
+**Decision**: Backend-based video processing
+
+**Reasoning**:
+- **Frontend Approach (WebAssembly)**:
+  - ❌ Heavy performance impact on browser with large files
+  - ❌ Very slow processing
+  - ❌ Limited format support
+  - ❌ Browser resource constraints
+
+- **Backend Approach (FFmpeg)**:
+  - ✅ Fast and stable processing
+  - ✅ Handles large files efficiently
+  - ✅ Full FFmpeg feature support
+  - ✅ Better resource utilization
+  - ⚠️ More complex architecture (workers, queues)
+
+**Conclusion**: Backend approach chosen for robust, scalable foundation despite added complexity.
+
+### Storage Decision: Local Filesystem vs Cloud Storage
+
+**Decision**: Local filesystem storage (`uploads/raw/` and `uploads/processed/`)
+
+**Reasoning**:
+- **Cloud Storage (AWS S3, GCP)**:
+  - ✅ Better for horizontal scaling
+  - ✅ Production-ready
+  - ❌ Requires premium account (cost consideration)
+  - ❌ Additional setup complexity
+
+- **Local Storage**:
+  - ✅ Simple setup (no cloud account needed)
+  - ✅ Fast direct access
+  - ✅ No storage costs
+  - ❌ Doesn't scale horizontally
+  - ❌ Single point of failure
+
+**Conclusion**: Local storage chosen due to project constraints. Architecture allows easy migration to cloud storage later.
+
+### State Management: Context API vs Redux/Zustand
+
+**Decision**: React Context API
+
+**Reasoning**:
+- **Context API**:
+  - ✅ Sufficient for simple auth state
+  - ✅ No additional dependencies
+  - ✅ Built-in React feature
+  - ✅ Less boilerplate
+
+- **Redux/Zustand**:
+  - ✅ Better for complex state
+  - ❌ Overkill for this project size
+  - ❌ More boilerplate
+  - ❌ Additional learning curve
+
+**Conclusion**: Context API chosen for simplicity. Can migrate to Redux/Zustand if state complexity grows.
+
+### Architecture Principles
+
+1. **Right Tool for the Job**: Avoid over-engineering; choose solutions that fit project scale
+2. **Scalability**: Design allows growth (modules can become microservices, local storage can migrate to cloud)
+3. **Developer Experience**: Prioritize maintainability and clear structure
+4. **User Experience**: Real-time updates, fast responses, intuitive interface
+5. **Cost Efficiency**: Balance features with implementation complexity and cost
+
+### Design Patterns Used
+
+- **Module-Based Architecture**: Feature-based modules (Auth, Videos)
+- **Queue-Based Processing**: Asynchronous job processing with BullMQ
+- **WebSocket Gateway**: Real-time updates via Socket.IO
+- **Dependency Injection**: NestJS DI container
+- **Repository Pattern**: Service layer abstracts data access
+
+
 ## Project Structure
 
 ```
@@ -49,7 +156,7 @@ A full-stack application for uploading, converting, and managing videos with aut
 
 ## Prerequisites
 
-**⚠️ Linux environment is required to run this application.**
+**⚠️ Linux or macOS environment is required to run this application.**
 
 - Node.js >= 18.0.0
 - FFmpeg installed on your system
@@ -141,6 +248,19 @@ All input formats can be converted to:
 - MOV
 - MKV
 - FLV
+
+### Browser Compatibility
+
+**Important Note**: Not all formats are playable directly in web browsers:
+
+- ✅ **Browser-Compatible Formats**: MP4, WebM, MOV, MKV (with proper codecs)
+- ❌ **Not Browser-Compatible**: AVI and FLV formats cannot be displayed/played in browsers
+
+**Why This Matters**:
+- AVI and FLV files are converted successfully on the backend
+- These format-specific files can be downloaded but cannot be previewed/played in the browser
+- Users can download AVI/FLV files for use in desktop media players or other applications
+- For browser playback, use MP4 or WebM formats
 
 ## Video Processing Details
 
